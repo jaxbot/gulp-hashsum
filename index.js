@@ -33,8 +33,8 @@ function hashsum(options) {
 			this.emit("error", new gutil.PluginError("gulp-hashsum", "Streams not supported"));
 			return;
 		}
-		var filePath = path.resolve(options.dest, file.path);
-		hashes[slash(path.relative(path.dirname(hashesFilePath), filePath))] = crypto
+		var filePath = path.resolve(file.path);
+		hashes["/" + slash(path.relative(options.relative, filePath))] = crypto
 			.createHash(options.hash)
 			.update(file.contents, "binary")
 			.digest("hex");
@@ -43,15 +43,24 @@ function hashsum(options) {
 	}
 
 	function writeSums() {
-		var lines = _.keys(hashes).sort().map(function (key) {
-			return hashes[key] + options.delimiter + key + "\n";
-		});
-		var data = new Buffer(lines.join(""));
+		var lines;
+		var data;
 
-		if (options.force || !fs.existsSync(hashesFilePath) || buffertools.compare(fs.readFileSync(hashesFilePath), data) !== 0) {
-			mkdirp(path.dirname(hashesFilePath));
-			fs.writeFileSync(hashesFilePath, data);
+		if (options.jsonOutput) {
+			var obj = {};
+			_.keys(hashes).sort().map(function (key) {
+				obj[key] = hashes[key];
+				return key;
+			});
+			data = JSON.stringify(obj);
+		} else {
+			lines = _.keys(hashes).sort().map(function (key) {
+				return hashes[key] + options.delimiter + key + "\n";
+			});
+			data = new Buffer(lines.join(""));
 		}
+
+		fs.writeFileSync(hashesFilePath, data);
 		this.emit("end");
 	}
 
